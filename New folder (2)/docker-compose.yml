@@ -1,0 +1,63 @@
+version: "3.6"
+
+networks:
+    app_network:
+
+volumes:
+    db_data:
+
+services:
+    nginx:
+        image: nginx:stable-alpine
+        container_name: nginx_${APP_NAME}
+        ports:
+            - 80:80
+        volumes:
+            - ./:/var/www/html:cached
+            - ./nginx/conf.d:/etc/nginx/conf.d:cached
+        depends_on:
+            - php
+            - mysql
+        networks:
+            - app_network
+
+    php:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args:
+                user: victor
+                uid: 1000
+        volumes:
+            - ./:/var/www/html:cached
+        ports:
+            - 9000:9000
+        networks:
+            - app_network
+
+    mysql:
+        platform: linux/x86_64
+        image: mysql:5.7
+        command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+        restart: unless-stopped
+        tty: true
+        ports:
+            - 3306:3306
+        environment:
+            MYSQL_USER: docker
+            MYSQL_PASSWORD: docker
+            MYSQL_ROOT_PASSWORD: docker
+            MYSQL_DATABASE: docker
+        volumes:
+            - db_data:/var/lb/mysql
+        networks:
+            - app_network
+    phpmyadmin:
+        image: phpmyadmin
+        restart: always
+        ports:
+            - 8080:80
+        environment:
+            - PMA_ARBITRARY=1
+        networks:
+            - app_network
